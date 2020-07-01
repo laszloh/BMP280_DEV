@@ -126,6 +126,9 @@ class BMP280_DEV : public Device {															// Derive the BMP280_DEV class 
 #ifdef ARDUINO_ARCH_ESP32
 		BMP280_DEV(uint8_t cs, uint8_t spiPort, SPIClass& spiClass);	// BMP280_DEV object for SPI1 with supplied SPIClass object
 #endif
+#ifdef ARDUINO_ARCH_STM32
+		BMP280_DEV(uint8_t cs, SPIClass& spiClass);
+#endif
 		uint8_t begin(Mode mode = SLEEP_MODE, 												// Initialise the barometer with arguments
 									Oversampling presOversampling = OVERSAMPLING_X16, 
 									Oversampling tempOversampling = OVERSAMPLING_X2, 
@@ -143,10 +146,14 @@ class BMP280_DEV : public Device {															// Derive the BMP280_DEV class 
 		void setTimeStandby(TimeStandby timeStandby);	 							// Set the time standby measurement interval: 0.5, 62, 125, 250, 500ms, 1s, 2s, 4s
 		void setSeaLevelPressure(float pressure = 1013.23f);				// Set the sea level pressure value
 		uint8_t getTemperature(float &temperature);									// Get a temperature measurement
+		uint8_t getTemperature(int32_t &temperature);									// Get a temperature measurement
 		uint8_t getPressure(float &pressure);												// Get a pressure measurement
+		uint8_t getPressure(uint32_t &pressure);												// Get a pressure measurement
 		uint8_t getTempPres(float &temperature, float &pressure);		// Get a temperature and pressure measurement
+		uint8_t getTempPres(int32_t &temperature, uint32_t &pressure);		// Get a temperature and pressure measurement
 		uint8_t getAltitude(float &altitude);												// Get an altitude measurement
 		uint8_t getMeasurements(float &temperature, float &pressure, float &altitude);	// Get temperature, pressure and altitude measurements
+		uint8_t getMeasurements(int32_t &temperature, uint32_t &pressure, float &altitude);	// Get temperature, pressure and altitude measurements
 	protected:
 	private:
 		void setMode(Mode mode);																		// Set the barometer mode

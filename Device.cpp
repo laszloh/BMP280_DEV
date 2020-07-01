@@ -42,6 +42,10 @@ Device::Device(uint8_t cs) : comms(SPI_COMMS), cs(cs), spiClockSpeed(1000000) {}
 Device::Device(uint8_t cs, uint8_t spiPort, SPIClass& spiClass) 
 	: comms(SPI_COMMS), cs(cs), spiPort(spiPort), spi(&spiClass), spiClockSpeed(1000000) {}
 #endif
+#ifdef ARDUINO_ARCH_STM32
+Device::Device(uint8_t cs, SPIClass& spiClass) 
+	: comms(SPI_COMMS), cs(cs), spiClockSpeed(1000000), spi(&spiClass) {}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 // Device Public Member Function
@@ -92,6 +96,8 @@ void Device::initialise()																						// Initialise device communicatio
 			spi = &SPI;																										// Start VSPI on SCK 5, MOSI 18, MISO 19, SS CS
 			spi->begin();
 		}														
+#elif defined(ARDUINO_ARCH_STM32)
+		spi->begin();
 #else
 		spi = &SPI;																											// Set-up spi pointer for SPI communications
 		spi->begin();
@@ -140,7 +146,7 @@ uint8_t Device::readByte(uint8_t subAddress)												// Read a byte from the 
 		spi->beginTransaction(SPISettings(spiClockSpeed, MSBFIRST, SPI_MODE0));		// Read a byte from the sub-address using SPI
 		digitalWrite(cs, LOW);
 		spi->transfer(subAddress | READ_MASK);
-		data = spi->transfer(data);
+		data = spi->transfer(0);
 		digitalWrite(cs, HIGH);
 		spi->endTransaction();	
 	}

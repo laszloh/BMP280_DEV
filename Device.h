@@ -57,7 +57,10 @@ class Device{
 		Device(uint8_t cs);																					// Device object for SPI operation
 #ifdef ARDUINO_ARCH_ESP32
 		Device(uint8_t cs, uint8_t spiPort, SPIClass& spiClass);		// Device object for ESP32 HSPI operation with supplied SPI object
-#endif		
+#endif
+#ifdef ARDUINO_ARCH_STM32
+		Device(uint8_t cs, SPIClass& spiClass);
+#endif
 		void setClock(uint32_t clockSpeed);													// Set the I2C/SPI clock speed
 	protected:
 		void initialise();																					// Initialise communications	

@@ -49,6 +49,9 @@ BMP280_DEV::BMP280_DEV(uint8_t cs) : Device(cs) {}			   			// Constructor for SP
 #ifdef ARDUINO_ARCH_ESP32 																			// Constructors for SPI communications on the ESP32
 BMP280_DEV::BMP280_DEV(uint8_t cs, uint8_t spiPort, SPIClass& spiClass) : Device(cs, spiPort, spiClass) {}
 #endif
+#ifdef ARDUINO_ARCH_STM32
+BMP280_DEV::BMP280_DEV(uint8_t cs, SPIClass& spiClass) : Device(cs, spiClass) {}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 // BMP280_DEV Public Member Functions
@@ -134,6 +137,17 @@ void BMP280_DEV::setSeaLevelPressure(float pressure)								// Set the sea level
 
 uint8_t BMP280_DEV::getTemperature(float &temperature)							// Get the temperature
 {
+	int32_t temp;
+	if (!getTemperature(temp))																									// Check if a measurement is ready
+	{
+		return 0;
+	}
+	temperature = (float)temp / 100.0f;                               // Calculate the temperature in degrees celcius
+	return 1;
+}
+
+uint8_t BMP280_DEV::getTemperature(int32_t &temperature)							// Get the temperature
+{
 	if (!dataReady())																									// Check if a measurement is ready
 	{
 		return 0;
@@ -141,18 +155,34 @@ uint8_t BMP280_DEV::getTemperature(float &temperature)							// Get the temperat
 	uint8_t data[3];                                                  // Create a data buffer
 	readBytes(BMP280_TEMP_MSB, &data[0], 3);             							// Read the temperature and pressure data
 	int32_t adcTemp = (int32_t)data[0] << 12 | (int32_t)data[1] << 4 | (int32_t)data[2] >> 4;  // Copy the temperature and pressure data into the adc variables
-	int32_t temp = bmp280_compensate_T_int32(adcTemp);                // Temperature compensation (function from BMP280 datasheet)
-	temperature = (float)temp / 100.0f;                               // Calculate the temperature in degrees celcius
+	temperature = bmp280_compensate_T_int32(adcTemp);                // Temperature compensation (function from BMP280 datasheet)
 	return 1;
 }
 
-uint8_t BMP280_DEV::getPressure(float &pressure)										// Get the pressure
-{
+uint8_t BMP280_DEV::getPressure(float &pressure) {
 	float temperature;
 	return getTempPres(temperature, pressure);
 }
 
+uint8_t BMP280_DEV::getPressure(uint32_t &pressure) {
+	int32_t temperature;
+	return getTempPres(temperature, pressure);
+}
+
 uint8_t BMP280_DEV::getTempPres(float &temperature, float &pressure)	// Get the temperature and pressure
+{
+	uint32_t pres;
+	int32_t temp;
+	if (!getTempPres(temp, pres))																									// Check if a measurement is ready
+	{
+		return 0;
+	}
+	temperature = (float)temp / 100.0f;                               // Calculate the temperature in degrees celcius
+	pressure = (float)pres / 256.0f / 100.0f;                         // Calculate the pressure in millibar
+	return 1;
+}
+
+uint8_t BMP280_DEV::getTempPres(int32_t &temperature, uint32_t &pressure)
 {
 	if (!dataReady())																									// Check if a measurement is ready
 	{
@@ -162,10 +192,8 @@ uint8_t BMP280_DEV::getTempPres(float &temperature, float &pressure)	// Get the 
 	readBytes(BMP280_PRES_MSB, &data[0], 6);             							// Read the temperature and pressure data
 	int32_t adcTemp = (int32_t)data[3] << 12 | (int32_t)data[4] << 4 | (int32_t)data[5] >> 4;  // Copy the temperature and pressure data into the adc variables
 	int32_t adcPres = (int32_t)data[0] << 12 | (int32_t)data[1] << 4 | (int32_t)data[2] >> 4;
-	int32_t temp = bmp280_compensate_T_int32(adcTemp);                // Temperature compensation (function from BMP280 datasheet)
-	uint32_t pres = bmp280_compensate_P_int64(adcPres);               // Pressure compensation (function from BMP280 datasheet)
-	temperature = (float)temp / 100.0f;                               // Calculate the temperature in degrees celcius
-	pressure = (float)pres / 256.0f / 100.0f;                         // Calculate the pressure in millibar
+	temperature = bmp280_compensate_T_int32(adcTemp);                // Temperature compensation (function from BMP280 datasheet)
+	pressure = bmp280_compensate_P_int64(adcPres);               // Pressure compensation (function from BMP280 datasheet)
 	return 1;
 }
 
@@ -180,6 +208,16 @@ uint8_t BMP280_DEV::getMeasurements(float &temperature, float &pressure, float &
 	if (getTempPres(temperature, pressure))
 	{
 		altitude = ((float)powf(sea_level_pressure / pressure, 0.190223f) - 1.0f) * (temperature + 273.15f) / 0.0065f; // Calculate the altitude in metres 
+		return 1;
+	}
+	return 0;
+}
+
+uint8_t BMP280_DEV::getMeasurements(int32_t &temperature, uint32_t &pressure, float &altitude)
+{
+	if (getTempPres(temperature, pressure))
+	{
+		altitude = ((float)powf(sea_level_pressure / (pressure / 256.0f / 100.0f), 0.190223f) - 1.0f) * ((temperature / 100.0f) * 273.15f) / 0.0065f;
 		return 1;
 	}
 	return 0;
